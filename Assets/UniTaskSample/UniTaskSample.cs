@@ -37,7 +37,7 @@ public class UniTaskSample : MonoBehaviour
 
         //  UniTask型のメソッドを呼び出すタスク
         Debug.Log("UniTask型のメソッドを呼び出すタスク");
-        var moveTask = MoveTask(this.destroyCancellationToken);
+        var moveTask = MoveT(this.destroyCancellationToken);
         if (await moveTask.SuppressCancellationThrow()) { return; }
 
         //  同時再生するタスク
@@ -59,27 +59,17 @@ public class UniTaskSample : MonoBehaviour
     /// </summary>
     /// <param name="ct"></param>
     /// <returns></returns>
-    private async UniTask MoveTask(CancellationToken ct)
+    private async UniTask MoveT(CancellationToken ct)
     {
-        await transform.DOMove(_pos[0].position, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
-            .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
+        for(int i=0;_pos.Length>i;i++)
+        {
+            await MoveTask(gameObject, _pos[i].position, _duration, _ease, ct);
+        }
 
-        await transform.DOMove(_pos[1].position, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
-            .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
-
-        await transform.DOMove(_pos[2].position, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
-            .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
-
-        await transform.DOMove(_pos[3].position, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
-            .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
+        //foreach(var pos  in _pos)
+        //{
+        //    await MoveTask(gameObject, pos.position, _duration, _ease, ct);
+        //}
     }
 
     /// <summary>
@@ -89,11 +79,11 @@ public class UniTaskSample : MonoBehaviour
     /// <returns></returns>
     private async UniTask AllTask(CancellationToken ct)
     {
-        var tasks = new List<UniTask>()
+        var tasks = new List<UniTask>
         {
-            SingleMoveTask(ct,0),   //  宣言時に入れる
+            MoveTask(gameObject, _pos[0].position, _duration, _ease, ct),
+            SingleScaleTask(gameObject,_scale,_duration,_ease,ct),
         };
-        tasks.Add(SingleScaleTask(ct)); //  後から入れる
 
         await UniTask.WhenAll(tasks);   //  同時に再生する
 
@@ -105,12 +95,16 @@ public class UniTaskSample : MonoBehaviour
     /// <param name="ct"></param>
     /// <param name="i"></param>
     /// <returns></returns>
-    private async UniTask SingleMoveTask(CancellationToken ct, int i)
+    private async UniTask MoveTask
+        (GameObject obj
+        ,Vector3 pos
+        ,float duration
+        ,Ease ease
+        ,CancellationToken ct)
     {
-
-        await transform.DOMove(_pos[i].position, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
+        await obj.transform.DOMove(pos, duration)
+            .SetLink(obj)
+            .SetEase(ease)
             .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
     }
 
@@ -119,7 +113,12 @@ public class UniTaskSample : MonoBehaviour
     /// </summary>
     /// <param name="ct"></param>
     /// <returns></returns>
-    private async UniTask SingleScaleTask(CancellationToken ct)
+    private async UniTask SingleScaleTask
+        (GameObject obj
+        , float scale
+        , float duration
+        , Ease ease
+        , CancellationToken ct)
     {
         await transform.DOScale(_scale, _duration)
             .SetLink(gameObject)
