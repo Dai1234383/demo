@@ -21,19 +21,18 @@ public class UniTaskSample : MonoBehaviour
 
 
     // ---------------------------- UnityMessage
+
+    
     private async void Start()
     {
         //  初期設定
         DG.Tweening.DOTween.SetTweensCapacity(tweenersCapacity: 5000, sequencesCapacity: 200);
 
-        //  基本的なタスク
-        Debug.Log("基本的なタスク");
-        await UniTask.Delay(TimeSpan.FromSeconds(_waitTime));
+        var startTask = StartTask(destroyCancellationToken);
+        if(await startTask.SuppressCancellationThrow()) { return; }
 
-        //  キャンセル処理を実装したタスク
-        Debug.Log("キャンセル処理を実装したタスク");
-        var delayTask = UniTask.Delay(TimeSpan.FromSeconds(_waitTime), cancellationToken: this.destroyCancellationToken);
-        if (await delayTask.SuppressCancellationThrow()) { return; }
+
+       
 
         //  UniTask型のメソッドを呼び出すタスク
         Debug.Log("UniTask型のメソッドを呼び出すタスク");
@@ -54,6 +53,27 @@ public class UniTaskSample : MonoBehaviour
 
 
     // ---------------------------- PrivateMethod
+
+
+    private async UniTask StartTask(CancellationToken ct)
+    {
+        await UniTask.Delay(TimeSpan.FromSeconds(_waitTime * 2), cancellationToken: ct);
+
+        foreach (var pos in _pos)
+        {
+            await MoveTask(gameObject, pos.position, _duration, _ease, ct);
+        }
+
+        var tasks = new List<UniTask>
+        {
+            MoveTask(gameObject, _pos[0].position, _duration, _ease, ct),
+            ScaleTask(gameObject,_scale,_duration,_ease,ct),
+        };
+        await UniTask.WhenAll(tasks);   //  同時に再生する
+    }
+
+
+
     /// <summary>
     /// アニメーションを順に行うタスク
     /// </summary>
@@ -65,11 +85,6 @@ public class UniTaskSample : MonoBehaviour
         {
             await MoveTask(gameObject, _pos[i].position, _duration, _ease, ct);
         }
-
-        //foreach(var pos  in _pos)
-        //{
-        //    await MoveTask(gameObject, pos.position, _duration, _ease, ct);
-        //}
     }
 
     /// <summary>
@@ -79,13 +94,7 @@ public class UniTaskSample : MonoBehaviour
     /// <returns></returns>
     private async UniTask AllTask(CancellationToken ct)
     {
-        var tasks = new List<UniTask>
-        {
-            MoveTask(gameObject, _pos[0].position, _duration, _ease, ct),
-            SingleScaleTask(gameObject,_scale,_duration,_ease,ct),
-        };
-
-        await UniTask.WhenAll(tasks);   //  同時に再生する
+        
 
     }
 
@@ -109,20 +118,24 @@ public class UniTaskSample : MonoBehaviour
     }
 
     /// <summary>
-    /// 単一スケールアニメーション
+    /// 拡縮タスク
     /// </summary>
+    /// <param name="obj"></param>
+    /// <param name="scale"></param>
+    /// <param name="duration"></param>
+    /// <param name="ease"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    private async UniTask SingleScaleTask
+    private async UniTask ScaleTask
         (GameObject obj
         , float scale
         , float duration
         , Ease ease
         , CancellationToken ct)
     {
-        await transform.DOScale(_scale, _duration)
-            .SetLink(gameObject)
-            .SetEase(_ease)
+        await obj.transform.DOScale(scale, duration)
+            .SetLink(obj)
+            .SetEase(ease)
             .ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationToken: ct);
     }
 }
